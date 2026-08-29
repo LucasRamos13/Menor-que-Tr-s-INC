@@ -114,16 +114,32 @@ sempre vale conferir com `git status` antes de commitar.
 
 ---
 
-## 5. Cloudflare Pages
+## 5. Cloudflare (Workers Builds)
+
+A Cloudflare vem unificando Pages e Workers num único painel. Para um app
+Next.js via `@opennextjs/cloudflare`, o fluxo atual é **Workers → conectar o
+Git** ("Workers Builds"), não o antigo formulário de Pages.
 
 1. Crie uma conta em [dash.cloudflare.com](https://dash.cloudflare.com/sign-up) (gratuita).
-2. No menu lateral, vá em **Workers & Pages → Create → Pages** (ou **Workers**, dependendo da versão do painel — a Cloudflare vem unificando os dois; procure a opção "Connect to Git" / "Import an existing Git repository").
+2. No menu lateral, vá em **Workers & Pages → Create → Workers** (ou **Import a repository** / **Connect to Git**, dependendo da versão do painel).
 3. **Connect to GitHub** e autorize o acesso à sua conta.
 4. Selecione o repositório **`Menor-que-Tr-s-INC`**.
-5. **Production branch**: `main` (ou a branch que você usa como principal).
-6. **Framework preset**: selecione "Next.js" se disponível — o painel deve detectar automaticamente o uso de `@opennextjs/cloudflare`. Caso o preset automático não configure os comandos corretamente, defina manualmente:
-   - **Build command**: `npm run pages:build`
-   - **Build output directory**: `.open-next/assets` (o Worker em si é publicado a partir de `.open-next/worker.js`, conforme `wrangler.jsonc` — o fluxo "Workers Builds" do Cloudflare usa esse arquivo automaticamente quando presente no repositório).
+5. **Production branch**: `main`.
+6. O painel deve detectar o preset "Next.js" automaticamente. Se pedir os
+   comandos manualmente, o formulário tem 4 campos — use exatamente estes
+   (todos definidos como scripts do `package.json`, então funcionam sem
+   depender de instalação global de nada):
+
+   | Campo | Valor |
+   |---|---|
+   | **Root directory** | deixe em branco (ou `/`) — o projeto está na raiz do repositório, não é um monorepo |
+   | **Build command** | `npm run pages:build` |
+   | **Deploy command** | `npm run deploy` |
+   | **Version command** | `npm run upload` |
+
+   - *Build command* gera o bundle em `.open-next/` (via `opennextjs-cloudflare build`).
+   - *Deploy command* publica esse bundle direto em produção (`opennextjs-cloudflare deploy`, que por baixo roda `wrangler deploy`).
+   - *Version command* é usado pela Cloudflare para criar uma **versão/preview** sem promover a produção (`opennextjs-cloudflare upload`, equivalente a `wrangler versions upload`) — útil em PRs/preview deployments; para o deploy direto da branch de produção, o que importa é o Deploy command.
 7. **Environment variables** — adicione exatamente estas (mesmos valores do seu `.env.local`):
    ```
    NEXT_PUBLIC_SUPABASE_URL
@@ -136,7 +152,15 @@ sempre vale conferir com `git status` antes de commitar.
    > limitação conhecida do `@opennextjs/cloudflare` no Windows (ver README →
    > seção Stack) não é um problema aqui — ela só aparece se você tentar
    > rodar `npm run pages:build` na sua própria máquina Windows.
-9. Ao terminar, a Cloudflare mostra uma URL do tipo `https://menor-que-tres.pages.dev` (ou `*.workers.dev`, dependendo do modo de deploy). Abra e confira se a tela de login aparece.
+9. Ao terminar, a Cloudflare mostra a URL do Worker, no formato
+   `https://<nome-do-projeto>.<sua-conta>.workers.dev` (por exemplo,
+   `https://menor-que-tr-s-inc.lucasgarciaramos13.workers.dev`). Abra e
+   confira se a tela de login aparece.
+   - O redirect URI de Calendar para esse domínio fica em
+     `https://<seu-worker>.workers.dev/api/google/oauth/callback` — é essa
+     URL exata que precisa ser cadastrada no Google Cloud Console (passo 2.4)
+     e usada no passo 11 abaixo.
+
 10. **Domínio próprio (opcional)**: em **Custom domains**, adicione seu domínio e siga as instruções de DNS mostradas pela Cloudflare.
 11. **Importante — atualize as Redirect URLs com o domínio final**:
     - Google Cloud Console → Credentials → seu OAuth Client → adicione `https://SEU-DOMINIO-FINAL/api/google/oauth/callback` em Authorized redirect URIs (se ainda não tinha usado esse domínio exato no passo 2.4).
