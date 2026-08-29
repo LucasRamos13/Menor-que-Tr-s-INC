@@ -102,7 +102,7 @@ export function GoalFormDialog({ open, onOpenChange, coupleId, userId, goal, mem
         </div>
         <div>
           <Label htmlFor="goal-name">Nome</Label>
-          <Input id="goal-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Casamento" required autoFocus />
+          <Input id="goal-name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Viagem dos sonhos" required autoFocus />
         </div>
         <div>
           <Label htmlFor="goal-description">Descrição</Label>

@@ -51,7 +51,7 @@ export function GoalsBoard({ coupleId, userId, goals, members }: GoalsBoardProps
       </Button>
 
       {goals.length === 0 ? (
-        <EmptyState icon={Target} title="Nenhum objetivo cadastrado" description="Ex: Casamento, Reserva de emergência, Carro novo." />
+        <EmptyState icon={Target} title="Nenhum objetivo cadastrado" description="Ex: Viagem dos sonhos, Reserva de emergência, Carro novo." />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {goals.map((g) => {

@@ -18,7 +18,7 @@ begin
     (new.id, 'Saúde', '💊', 'expense', true),
     (new.id, 'Educação', '📚', 'expense', true),
     (new.id, 'Assinaturas', '📱', 'expense', true),
-    (new.id, 'Casamento', '💍', 'both', true),
+    (new.id, 'Viagens', '🧳', 'both', true),
     (new.id, 'Investimentos', '📈', 'both', true),
     (new.id, 'Salário', '💼', 'income', true),
     (new.id, 'Freelance', '💻', 'income', true),

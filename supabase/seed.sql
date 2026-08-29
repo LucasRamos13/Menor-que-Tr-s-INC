@@ -52,16 +52,16 @@ begin
 
   insert into public.financial_goals (couple_id, name, description, icon, target_amount_cents, current_amount_cents, target_date, category, created_by)
   values
-    (v_couple_id, 'Casamento', 'Reserva para a festa e cerimônia', '💍', 3000000, 1850000, current_date + interval '6 months', 'Casamento', v_creator),
+    (v_couple_id, 'Viagem dos sonhos', 'Reserva para a próxima viagem', '🧳', 3000000, 1850000, current_date + interval '6 months', 'Viagem', v_creator),
     (v_couple_id, 'Reserva de emergência', null, '🏠', 1000000, 400000, null, 'Reserva', v_creator);
 
   insert into public.task_lists (couple_id, name, icon) values
     (v_couple_id, 'Casa', '🏠'),
-    (v_couple_id, 'Casamento', '💍');
+    (v_couple_id, 'Viagem', '🧳');
 
   insert into public.important_dates (couple_id, title, emoji, date, is_recurring_yearly, created_by) values
     (v_couple_id, 'Aniversário de namoro', '❤️', date_trunc('year', current_date)::date + interval '45 days', true, v_creator),
-    (v_couple_id, 'Casamento', '💍', current_date + interval '184 days', false, v_creator);
+    (v_couple_id, 'Aniversário de casa nova', '🏠', current_date + interval '184 days', false, v_creator);
 
   raise notice 'Seed complete for couple %', v_couple_id;
 end $$;

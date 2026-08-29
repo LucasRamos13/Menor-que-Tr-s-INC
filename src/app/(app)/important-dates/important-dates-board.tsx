@@ -52,7 +52,7 @@ export function ImportantDatesBoard({ coupleId, userId, dates }: ImportantDatesB
       </Button>
 
       {dates.length === 0 ? (
-        <EmptyState icon={Heart} title="Nenhuma data cadastrada" description="Ex: aniversário de namoro, casamento, aniversários." />
+        <EmptyState icon={Heart} title="Nenhuma data cadastrada" description="Ex: aniversário de namoro, aniversário de casa nova, datas especiais." />
       ) : (
         <div className="grid gap-3 sm:grid-cols-2">
           {dates.map((d) => (

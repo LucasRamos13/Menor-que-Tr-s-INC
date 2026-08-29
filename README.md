@@ -24,7 +24,7 @@ mais de um casal no futuro é uma questão de produto, não uma reescrita.
   [docs/google-calendar.md](docs/google-calendar.md)).
 - 🎯 **Objetivos financeiros**: meta, progresso visual, contribuições
   registradas ao longo do tempo.
-- ❤️ **Datas importantes**: aniversários, casamento, datas anuais com
+- ❤️ **Datas importantes**: aniversários, datas comemorativas, datas anuais com
   contagem regressiva.
 - 👫 **Espaço do casal**: convite por código para o parceiro(a) entrar no
   mesmo espaço; dados marcados como pessoais ou compartilhados.
