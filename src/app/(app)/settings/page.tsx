@@ -20,7 +20,7 @@ export default async function SettingsPage() {
       <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Configurações</h1>
 
       <Card>
-        <CardContent className="flex items-center gap-3 pt-5">
+        <CardContent className="flex items-center gap-3 pt-4 sm:pt-5">
           {user?.user_metadata?.avatar_url ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={user.user_metadata.avatar_url} alt="" className="h-12 w-12 rounded-full" referrerPolicy="no-referrer" />
@@ -40,7 +40,7 @@ export default async function SettingsPage() {
         {links.map(({ href, label, description, icon: Icon }) => (
           <Link key={href} href={href}>
             <Card className="transition-shadow hover:shadow-md">
-              <CardContent className="flex items-center justify-between pt-5">
+              <CardContent className="flex items-center justify-between pt-4 sm:pt-5">
                 <div className="flex items-center gap-3">
                   <Icon className="h-5 w-5 text-slate-400" />
                   <div>

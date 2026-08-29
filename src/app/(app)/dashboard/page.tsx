@@ -181,7 +181,7 @@ export default async function DashboardPage() {
 function SummaryTile({ label, value, icon: Icon, accent }: { label: string; value: string; icon: React.ComponentType<{ className?: string }>; accent?: string }) {
   return (
     <Card>
-      <CardContent className="flex items-center justify-between pt-5">
+      <CardContent className="flex items-center justify-between pt-4 sm:pt-5">
         <div>
           <p className="text-xs text-slate-500 dark:text-slate-400">{label}</p>
           <p className={`mt-1 text-lg font-semibold ${accent ?? "text-slate-900 dark:text-slate-100"}`}>{value}</p>

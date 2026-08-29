@@ -41,7 +41,7 @@ export default async function FinancePage() {
         ].map((link) => (
           <Link key={link.href} href={link.href}>
             <Card className="transition-shadow hover:shadow-md">
-              <CardContent className="flex items-center justify-between pt-5">
+              <CardContent className="flex items-center justify-between pt-4 sm:pt-5">
                 <span className="font-medium">{link.label}</span>
                 <ArrowRight className="h-4 w-4 text-slate-400" />
               </CardContent>

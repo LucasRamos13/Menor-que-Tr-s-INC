@@ -59,7 +59,7 @@ export function GoalsBoard({ coupleId, userId, goals, members }: GoalsBoardProps
             const days = g.target_date ? daysUntil(g.target_date) : null;
             return (
               <Card key={g.id} className={g.is_completed ? "opacity-70" : ""}>
-                <CardContent className="pt-5">
+                <CardContent className="pt-4 sm:pt-5">
                   <div className="mb-2 flex items-start justify-between">
                     <div>
                       <p className="font-semibold">
