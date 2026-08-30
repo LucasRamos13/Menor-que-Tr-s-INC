@@ -177,13 +177,22 @@ async function syncOneCalendar(
 
   const { data: linkRows, error: linkError } = await supabase
     .from("calendar_sync_events")
-    .select("*, events(updated_at)")
+    .select("*")
     .eq("connection_id", connectionId)
     .eq("google_calendar_id", googleCalendarId);
   if (linkError) throw linkError;
 
-  type LinkRowWithEvent = SyncEventRow & { events: { updated_at: string } | null };
-  const linkByGoogleId = new Map((linkRows as LinkRowWithEvent[]).map((r) => [r.google_event_id, r]));
+  const linkByGoogleId = new Map((linkRows ?? []).map((r) => [r.google_event_id, r]));
+
+  // Looked up as a plain, separate query rather than a `select("*, events(updated_at)")`
+  // embed: PostgREST evaluates RLS on an embedded to-one resource independently
+  // of the parent row, so a linked event that's still genuinely there could come
+  // back null through the embed and get misread as "deleted locally" here — which
+  // would push a bogus `delete_remote` to Google for a still-existing event.
+  const internalEventIds = (linkRows ?? []).map((r) => r.internal_event_id).filter((id): id is string => id !== null);
+  const { data: linkedEvents, error: linkedEventsError } = await supabase.from("events").select("id, updated_at").in("id", internalEventIds.length > 0 ? internalEventIds : [""]);
+  if (linkedEventsError) throw linkedEventsError;
+  const localUpdatedAtByEventId = new Map((linkedEvents ?? []).map((e) => [e.id, e.updated_at]));
 
   const allGoogleIds = new Set<string>([...freshById.keys(), ...linkByGoogleId.keys()]);
   const importErrors: string[] = [];
@@ -194,7 +203,7 @@ async function syncOneCalendar(
 
     const googleDeleted = fresh ? fresh.status === "cancelled" : false;
     const googleUpdatedAt = fresh ? (googleDeleted ? null : fresh.updated ?? null) : (link?.google_updated_at ?? null);
-    const localUpdatedAt = link?.events?.updated_at ?? null;
+    const localUpdatedAt = (link?.internal_event_id && localUpdatedAtByEventId.get(link.internal_event_id)) ?? null;
 
     // Brand-new Google event we've never seen: import it. Isolated in its own
     // try/catch so one malformed event (e.g. unusual recurrence data) can't
@@ -230,6 +239,7 @@ async function syncOneCalendar(
           .from("calendar_sync_events")
           .update({ sync_status: "error", last_error: "Agenda somente leitura no Google — esta alteração não pôde ser enviada." })
           .eq("id", link.id);
+        summary.errors += 1;
         continue;
       }
       throw error;
