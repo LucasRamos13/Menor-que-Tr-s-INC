@@ -68,6 +68,11 @@ export function isGoogleNotFoundError(error: unknown): boolean {
   return error instanceof GoogleApiError && error.status === 404;
 }
 
+/** e.g. writing to a read-only subscribed/public calendar (Google's "virtualCalendarManipulation"). */
+export function isGoogleForbiddenError(error: unknown): boolean {
+  return error instanceof GoogleApiError && error.status === 403;
+}
+
 export async function listCalendars(accessToken: string): Promise<GoogleCalendarListEntry[]> {
   const result = await googleFetch<{ items: GoogleCalendarListEntry[] }>(accessToken, "/users/me/calendarList");
   return result.items ?? [];

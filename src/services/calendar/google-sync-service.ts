@@ -7,10 +7,16 @@ import {
   updateEvent,
   deleteEvent,
   isGoogleGoneError,
+  isGoogleForbiddenError,
   type GoogleCalendarListEntry,
 } from "@/lib/google/calendar-client";
 import { refreshAccessToken } from "@/lib/google/oauth";
-import { internalEventToGoogleEvent, googleEventToInternalEvent, reconcile } from "./google-mapping";
+import { internalEventToGoogleEvent, googleEventToInternalEvent, reconcile, type SyncAction } from "./google-mapping";
+
+/** Actions that push a local change to Google — the only ones that can hit a read-only calendar. */
+function pushesToGoogle(actionType: SyncAction["type"]): boolean {
+  return actionType === "apply_local_to_remote" || actionType === "conflict_local_wins" || actionType === "recreate_remote_from_local";
+}
 
 type TypedClient = SupabaseClient<Database>;
 type Connection = Database["public"]["Tables"]["google_calendar_connections"]["Row"];
@@ -200,7 +206,21 @@ async function syncOneCalendar(
       lastSyncedLocalUpdatedAt: link.internal_updated_at,
     });
 
-    await applyAction(supabase, accessToken, coupleId, googleCalendarId, link, fresh, action, summary);
+    try {
+      await applyAction(supabase, accessToken, coupleId, googleCalendarId, link, fresh, action, summary);
+    } catch (error) {
+      // A read-only subscribed calendar (e.g. a public holiday calendar) will
+      // always reject writes — that is permanent and not the user's to fix,
+      // so record it on this one link instead of failing the whole sync.
+      if (pushesToGoogle(action.type) && isGoogleForbiddenError(error)) {
+        await supabase
+          .from("calendar_sync_events")
+          .update({ sync_status: "error", last_error: "Agenda somente leitura no Google — esta alteração não pôde ser enviada." })
+          .eq("id", link.id);
+        continue;
+      }
+      throw error;
+    }
   }
 
   const newSyncToken = result.nextSyncToken;
