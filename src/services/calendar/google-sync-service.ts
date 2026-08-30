@@ -246,9 +246,21 @@ async function syncOneCalendar(
           // same 403 on every future sync. Drop the link instead.
           await supabase.from("calendar_sync_events").delete().eq("id", link.id);
         } else {
+          // Acknowledge the current local/remote timestamps even though the
+          // push failed, so reconcile() sees this version as already "handled"
+          // next time instead of re-detecting the same local change forever —
+          // without this, a link that can never successfully push (read-only
+          // calendar) would retry the exact same doomed action on every single
+          // future sync, with no way for internal_updated_at to ever catch up
+          // (it's only advanced on a successful push).
           await supabase
             .from("calendar_sync_events")
-            .update({ sync_status: "error", last_error: "Agenda somente leitura no Google — esta alteração não pôde ser enviada." })
+            .update({
+              google_updated_at: googleUpdatedAt,
+              internal_updated_at: localUpdatedAt,
+              sync_status: "error",
+              last_error: "Agenda somente leitura no Google — esta alteração não pôde ser enviada.",
+            })
             .eq("id", link.id);
         }
         summary.errors += 1;
