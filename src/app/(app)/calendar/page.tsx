@@ -13,8 +13,10 @@ export default async function CalendarPage() {
   if (!couple) return null;
 
   const now = new Date();
-  const fromISO = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString();
-  const toISO = new Date(now.getFullYear(), now.getMonth() + 2, 0).toISOString();
+  // Wide enough to comfortably cover things like national holidays or a
+  // birthday several months out, without fetching a truly unbounded history.
+  const fromISO = new Date(now.getFullYear(), now.getMonth() - 3, 1).toISOString();
+  const toISO = new Date(now.getFullYear() + 1, now.getMonth() + 1, 0).toISOString();
 
   const [events, connection] = await Promise.all([
     listEventsInRange(supabase, couple.coupleId, { fromISO, toISO }),
