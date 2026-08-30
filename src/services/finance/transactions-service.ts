@@ -20,6 +20,22 @@ export interface TransactionPage {
   total: number;
 }
 
+/**
+ * Total balance across active accounts, computed in Postgres instead of
+ * fetching every transaction row into the app — see 0008_finance_summary_aggregates.sql.
+ */
+export async function getCoupleBalance(supabase: TypedClient, coupleId: string): Promise<number> {
+  const { data, error } = await supabase.rpc("get_couple_balance", { p_couple_id: coupleId });
+  if (error) throw error;
+  return data ?? 0;
+}
+
+export async function getCoupleMonthSummary(supabase: TypedClient, coupleId: string, monthStartISO: string): Promise<{ incomeCents: number; expenseCents: number }> {
+  const { data, error } = await supabase.rpc("get_couple_month_summary", { p_couple_id: coupleId, p_month_start: monthStartISO }).single();
+  if (error) throw error;
+  return { incomeCents: data.income_cents, expenseCents: data.expense_cents };
+}
+
 export async function listTransactions(supabase: TypedClient, coupleId: string, filters: TransactionFilters = {}): Promise<TransactionPage> {
   const page = filters.page ?? 0;
   const pageSize = filters.pageSize ?? 50;

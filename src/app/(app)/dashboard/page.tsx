@@ -2,9 +2,7 @@ import Link from "next/link";
 import { Wallet, CalendarDays, CheckSquare, Target, Heart, ArrowRight, TrendingUp, TrendingDown } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getMyCoupleContext } from "@/services/couples/couples-service";
-import { listAccounts } from "@/services/finance/accounts-service";
-import { listTransactions } from "@/services/finance/transactions-service";
-import { totalBalance, summarizeMonth } from "@/services/finance/dashboard";
+import { getCoupleBalance, getCoupleMonthSummary } from "@/services/finance/transactions-service";
 import { getTaskDashboard } from "@/services/tasks/tasks-service";
 import { getUpcomingEvents } from "@/services/calendar/events-service";
 import { listGoals } from "@/services/finance/goals-service";
@@ -25,20 +23,18 @@ export default async function DashboardPage() {
 
   const monthStart = `${todayISODate().slice(0, 7)}-01`;
 
-  const [accounts, monthTxPage, taskDashboard, upcomingEvents, goals, importantDates] = await Promise.all([
-    listAccounts(supabase, couple.coupleId),
-    listTransactions(supabase, couple.coupleId, { fromDate: monthStart, pageSize: 500 }),
+  const [balance, monthSummary, taskDashboard, upcomingEvents, goals, importantDates] = await Promise.all([
+    getCoupleBalance(supabase, couple.coupleId),
+    getCoupleMonthSummary(supabase, couple.coupleId, monthStart),
     getTaskDashboard(supabase, couple.coupleId),
     getUpcomingEvents(supabase, couple.coupleId, 4),
     listGoals(supabase, couple.coupleId),
     listImportantDates(supabase, couple.coupleId),
   ]);
 
-  const allTxForBalance = await listTransactions(supabase, couple.coupleId, { pageSize: 1000 });
-  const balance = totalBalance(accounts, allTxForBalance.transactions);
-  const monthSummary = summarizeMonth(monthTxPage.transactions);
   const activeGoals = goals.filter((g) => !g.is_completed).slice(0, 2);
   const nextDates = importantDates.slice(0, 2);
+  const netCents = monthSummary.incomeCents - monthSummary.expenseCents;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
@@ -51,7 +47,7 @@ export default async function DashboardPage() {
         <SummaryTile label="Saldo total" value={centsToBRL(balance)} icon={Wallet} />
         <SummaryTile label="Receitas do mês" value={centsToBRL(monthSummary.incomeCents)} icon={TrendingUp} accent="text-emerald-600" />
         <SummaryTile label="Despesas do mês" value={centsToBRL(monthSummary.expenseCents)} icon={TrendingDown} accent="text-red-600" />
-        <SummaryTile label="Saldo do mês" value={centsToBRL(monthSummary.netCents)} icon={Wallet} accent={monthSummary.netCents >= 0 ? "text-emerald-600" : "text-red-600"} />
+        <SummaryTile label="Saldo do mês" value={centsToBRL(netCents)} icon={Wallet} accent={netCents >= 0 ? "text-emerald-600" : "text-red-600"} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
