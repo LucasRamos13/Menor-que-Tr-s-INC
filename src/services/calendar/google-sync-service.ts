@@ -186,6 +186,7 @@ async function syncOneCalendar(
   const linkByGoogleId = new Map((linkRows as LinkRowWithEvent[]).map((r) => [r.google_event_id, r]));
 
   const allGoogleIds = new Set<string>([...freshById.keys(), ...linkByGoogleId.keys()]);
+  const importErrors: string[] = [];
 
   for (const googleEventId of allGoogleIds) {
     const fresh = freshById.get(googleEventId);
@@ -195,10 +196,17 @@ async function syncOneCalendar(
     const googleUpdatedAt = fresh ? (googleDeleted ? null : fresh.updated ?? null) : (link?.google_updated_at ?? null);
     const localUpdatedAt = link?.events?.updated_at ?? null;
 
-    // Brand-new Google event we've never seen: import it.
+    // Brand-new Google event we've never seen: import it. Isolated in its own
+    // try/catch so one malformed event (e.g. unusual recurrence data) can't
+    // abort every other event in this calendar for the rest of this run.
     if (fresh && !link && !googleDeleted) {
-      await importNewGoogleEvent(supabase, coupleId, connectionId, googleCalendarId, fresh);
-      summary.imported += 1;
+      try {
+        await importNewGoogleEvent(supabase, coupleId, connectionId, googleCalendarId, fresh);
+        summary.imported += 1;
+      } catch (error) {
+        summary.errors += 1;
+        importErrors.push(`"${fresh.summary ?? fresh.id}": ${error instanceof Error ? error.message : "erro desconhecido"}`);
+      }
       continue;
     }
 
@@ -235,6 +243,12 @@ async function syncOneCalendar(
       .update({ sync_token: newSyncToken })
       .eq("connection_id", connectionId)
       .eq("google_calendar_id", googleCalendarId);
+  }
+
+  // Surfaced after the token is saved (above) so a handful of bad events
+  // don't also force this calendar to redo its whole import window next time.
+  if (importErrors.length > 0) {
+    throw new Error(`${importErrors.length} evento(s) não importado(s) — ${importErrors[0]}`);
   }
 }
 

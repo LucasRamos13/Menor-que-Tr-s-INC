@@ -96,7 +96,13 @@ export function GoogleCalendarSettings({ connection, selections, justConnected, 
     const res = await fetch("/api/google/calendar/sync", { method: "POST" });
     const data = await res.json();
     if (data.error) throw new Error(data.error);
-    toast.success(`✓ Sincronizado — ${data.summary.imported} importados, ${data.summary.updatedLocal + data.summary.updatedRemote} atualizados`);
+    const { imported, updatedLocal, updatedRemote, errors } = data.summary;
+    const counts = `${imported} importados, ${updatedLocal + updatedRemote} atualizados`;
+    if (errors > 0) {
+      toast.warning(`⚠️ Sincronizado com falhas — ${counts}, ${errors} erro(s). Veja detalhes abaixo.`);
+    } else {
+      toast.success(`✓ Sincronizado — ${counts}`);
+    }
     router.refresh();
   }
 
