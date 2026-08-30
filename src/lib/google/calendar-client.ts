@@ -93,7 +93,7 @@ export interface ListEventsResult {
 export async function listEvents(
   accessToken: string,
   calendarId: string,
-  options: { syncToken?: string; timeMinISO?: string } = {},
+  options: { syncToken?: string; timeMinISO?: string; timeMaxISO?: string } = {},
 ): Promise<ListEventsResult> {
   const events: GoogleEvent[] = [];
   let pageToken: string | undefined;
@@ -103,8 +103,12 @@ export async function listEvents(
     const params = new URLSearchParams({ singleEvents: "true", maxResults: "250" });
     if (options.syncToken) {
       params.set("syncToken", options.syncToken);
-    } else if (options.timeMinISO) {
-      params.set("timeMin", options.timeMinISO);
+    } else {
+      // timeMax matters most for yearly-recurring calendars with no end date
+      // (e.g. a public holidays subscription) — without it, `singleEvents:
+      // true` expands the series decades into the future in one call.
+      if (options.timeMinISO) params.set("timeMin", options.timeMinISO);
+      if (options.timeMaxISO) params.set("timeMax", options.timeMaxISO);
     }
     if (pageToken) params.set("pageToken", pageToken);
 

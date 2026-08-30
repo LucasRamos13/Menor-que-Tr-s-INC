@@ -29,6 +29,11 @@ type SyncEventRow = Database["public"]["Tables"]["calendar_sync_events"]["Row"];
 
 const TOKEN_REFRESH_MARGIN_MS = 5 * 60 * 1000;
 const INITIAL_IMPORT_WINDOW_DAYS_PAST = 90;
+// Bounds how far into the future a calendar with no end date (e.g. a yearly-
+// recurring public holidays subscription) gets expanded in one import pass.
+// Events further out than this are picked up incrementally as sync_token-
+// based syncs naturally move this window forward over time.
+const INITIAL_IMPORT_WINDOW_DAYS_FUTURE = 365;
 
 export async function getConnection(supabase: TypedClient, userId: string): Promise<Connection | null> {
   const { data, error } = await supabase.from("google_calendar_connections").select("*").eq("user_id", userId).maybeSingle();
@@ -155,19 +160,18 @@ async function syncOneCalendar(
   syncToken: string | null,
   summary: SyncSummary,
 ): Promise<void> {
+  const initialImportWindow = {
+    timeMinISO: new Date(Date.now() - INITIAL_IMPORT_WINDOW_DAYS_PAST * 86400000).toISOString(),
+    timeMaxISO: new Date(Date.now() + INITIAL_IMPORT_WINDOW_DAYS_FUTURE * 86400000).toISOString(),
+  };
+
   let result;
   try {
-    result = syncToken
-      ? await listEvents(accessToken, googleCalendarId, { syncToken })
-      : await listEvents(accessToken, googleCalendarId, {
-          timeMinISO: new Date(Date.now() - INITIAL_IMPORT_WINDOW_DAYS_PAST * 86400000).toISOString(),
-        });
+    result = syncToken ? await listEvents(accessToken, googleCalendarId, { syncToken }) : await listEvents(accessToken, googleCalendarId, initialImportWindow);
   } catch (error) {
     if (isGoogleGoneError(error)) {
       // Sync token expired/invalidated on Google's side — fall back to a full resync.
-      result = await listEvents(accessToken, googleCalendarId, {
-        timeMinISO: new Date(Date.now() - INITIAL_IMPORT_WINDOW_DAYS_PAST * 86400000).toISOString(),
-      });
+      result = await listEvents(accessToken, googleCalendarId, initialImportWindow);
     } else {
       throw error;
     }
