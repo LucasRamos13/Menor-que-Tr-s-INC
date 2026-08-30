@@ -80,8 +80,11 @@ export function GoogleCalendarSettings({ connection, selections, justConnected, 
       const res = await fetch("/api/google/calendar/selections", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ selections: payload }) });
       const data = await res.json();
       if (data.error) throw new Error(data.error);
-      toast.success("✓ Calendários atualizados");
-      router.refresh();
+      // Saving which calendars to sync is meaningless on its own until a sync
+      // actually runs — chain it here so choosing a calendar always fetches
+      // its events immediately, instead of silently waiting for a second,
+      // easy-to-miss click on "Sincronizar agora" above.
+      await runSync();
     } catch {
       toast.error("Não foi possível salvar os calendários selecionados.");
     } finally {
@@ -89,14 +92,18 @@ export function GoogleCalendarSettings({ connection, selections, justConnected, 
     }
   }
 
+  async function runSync() {
+    const res = await fetch("/api/google/calendar/sync", { method: "POST" });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+    toast.success(`✓ Sincronizado — ${data.summary.imported} importados, ${data.summary.updatedLocal + data.summary.updatedRemote} atualizados`);
+    router.refresh();
+  }
+
   async function handleSyncNow() {
     setSyncing(true);
     try {
-      const res = await fetch("/api/google/calendar/sync", { method: "POST" });
-      const data = await res.json();
-      if (data.error) throw new Error(data.error);
-      toast.success(`✓ Sincronizado — ${data.summary.imported} importados, ${data.summary.updatedLocal + data.summary.updatedRemote} atualizados`);
-      router.refresh();
+      await runSync();
     } catch {
       toast.error("Não foi possível sincronizar com o Google Calendar agora.");
     } finally {
