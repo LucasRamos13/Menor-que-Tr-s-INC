@@ -119,7 +119,7 @@ export async function syncNow(supabase: TypedClient, coupleId: string, userId: s
     const calendarErrors: string[] = [];
     for (const selection of selections ?? []) {
       try {
-        await syncOneCalendar(supabase, coupleId, connection.id, accessToken, selection.google_calendar_id, selection.sync_token, summary);
+        await syncOneCalendar(supabase, coupleId, connection.id, accessToken, selection.google_calendar_id, selection.sync_token, selection.is_read_only, summary);
       } catch (error) {
         summary.errors += 1;
         calendarErrors.push(`${selection.calendar_summary}: ${error instanceof Error ? error.message : "erro desconhecido"}`);
@@ -151,6 +151,34 @@ export async function syncNow(supabase: TypedClient, coupleId: string, userId: s
   return summary;
 }
 
+/**
+ * A push that can never succeed against a read-only calendar. There's
+ * nothing further to reconcile once we know that, so this settles the link
+ * into a stable state instead of leaving it to be retried (and fail the same
+ * way) on every future sync.
+ */
+async function handleBlockedPush(supabase: TypedClient, link: SyncEventRow, actionType: SyncAction["type"], googleUpdatedAt: string | null, localUpdatedAt: string | null): Promise<void> {
+  if (actionType === "delete_remote") {
+    // There's no local event left to preserve (that's why delete_remote was
+    // chosen) and the remote delete will never succeed — drop the link.
+    await supabase.from("calendar_sync_events").delete().eq("id", link.id);
+    return;
+  }
+
+  // Acknowledge the current local/remote timestamps even though the push
+  // didn't happen, so reconcile() sees this version as already "handled"
+  // next time instead of re-detecting the same local change forever.
+  await supabase
+    .from("calendar_sync_events")
+    .update({
+      google_updated_at: googleUpdatedAt,
+      internal_updated_at: localUpdatedAt,
+      sync_status: "error",
+      last_error: "Agenda somente leitura no Google — esta alteração não pôde ser enviada.",
+    })
+    .eq("id", link.id);
+}
+
 async function syncOneCalendar(
   supabase: TypedClient,
   coupleId: string,
@@ -158,6 +186,7 @@ async function syncOneCalendar(
   accessToken: string,
   googleCalendarId: string,
   syncToken: string | null,
+  isReadOnly: boolean,
   summary: SyncSummary,
 ): Promise<void> {
   const initialImportWindow = {
@@ -232,37 +261,23 @@ async function syncOneCalendar(
       lastSyncedLocalUpdatedAt: link.internal_updated_at,
     });
 
+    // Known read-only calendar (from Google's accessRole, recorded when the
+    // calendar was selected — see 0011_google_calendar_selection_read_only.sql):
+    // never even attempt the write, instead of trying and reacting to the 403.
+    if (isReadOnly && pushesToGoogle(action.type)) {
+      await handleBlockedPush(supabase, link, action.type, googleUpdatedAt, localUpdatedAt);
+      summary.errors += 1;
+      continue;
+    }
+
     try {
       await applyAction(supabase, accessToken, coupleId, googleCalendarId, link, fresh, action, summary);
     } catch (error) {
-      // A read-only subscribed calendar (e.g. a public holiday calendar) will
-      // always reject writes — that is permanent and not the user's to fix,
-      // so record it on this one link instead of failing the whole sync.
+      // Fallback for a calendar not yet flagged read-only (selected before
+      // this check existed, or one whose access level changed after being
+      // selected) — same handling, just reactive instead of preemptive.
       if (pushesToGoogle(action.type) && isGoogleForbiddenError(error)) {
-        if (action.type === "delete_remote") {
-          // There's no local event left to preserve (that's why delete_remote
-          // was chosen) and the remote write will never succeed against a
-          // read-only calendar — retrying this link forever just repeats the
-          // same 403 on every future sync. Drop the link instead.
-          await supabase.from("calendar_sync_events").delete().eq("id", link.id);
-        } else {
-          // Acknowledge the current local/remote timestamps even though the
-          // push failed, so reconcile() sees this version as already "handled"
-          // next time instead of re-detecting the same local change forever —
-          // without this, a link that can never successfully push (read-only
-          // calendar) would retry the exact same doomed action on every single
-          // future sync, with no way for internal_updated_at to ever catch up
-          // (it's only advanced on a successful push).
-          await supabase
-            .from("calendar_sync_events")
-            .update({
-              google_updated_at: googleUpdatedAt,
-              internal_updated_at: localUpdatedAt,
-              sync_status: "error",
-              last_error: "Agenda somente leitura no Google — esta alteração não pôde ser enviada.",
-            })
-            .eq("id", link.id);
-        }
+        await handleBlockedPush(supabase, link, action.type, googleUpdatedAt, localUpdatedAt);
         summary.errors += 1;
         continue;
       }

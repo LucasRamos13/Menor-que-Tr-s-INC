@@ -19,6 +19,7 @@ interface GoogleCalendarEntry {
   id: string;
   summary: string;
   primary?: boolean;
+  accessRole: string;
 }
 
 interface GoogleCalendarSettingsProps {
@@ -76,7 +77,7 @@ export function GoogleCalendarSettings({ connection, selections, justConnected, 
   async function handleSaveSelection() {
     setSavingSelection(true);
     try {
-      const payload = calendars.map((c) => ({ google_calendar_id: c.id, calendar_summary: c.summary, is_syncing: !!checked[c.id] }));
+      const payload = calendars.map((c) => ({ google_calendar_id: c.id, calendar_summary: c.summary, is_syncing: !!checked[c.id], accessRole: c.accessRole }));
       const res = await fetch("/api/google/calendar/selections", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ selections: payload }) });
       const data = await res.json();
       if (data.error) throw new Error(data.error);

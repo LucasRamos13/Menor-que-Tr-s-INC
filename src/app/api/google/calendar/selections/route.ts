@@ -8,7 +8,11 @@ interface SelectionInput {
   google_calendar_id: string;
   calendar_summary: string;
   is_syncing: boolean;
+  accessRole?: string;
 }
+
+/** Google's accessRole values that mean the calendar can never accept writes from us. */
+const READ_ONLY_ROLES = new Set(["reader", "freeBusyReader"]);
 
 export async function POST(request: Request) {
   const supabase = await createClient();
@@ -26,7 +30,11 @@ export async function POST(request: Request) {
     const { error } = await supabase
       .from("google_calendar_selections")
       .upsert(
-        selections.map((s) => ({ connection_id: connection.id, ...s })),
+        selections.map(({ accessRole, ...s }) => ({
+          connection_id: connection.id,
+          is_read_only: !!accessRole && READ_ONLY_ROLES.has(accessRole),
+          ...s,
+        })),
         { onConflict: "connection_id,google_calendar_id" },
       );
     if (error) throw error;

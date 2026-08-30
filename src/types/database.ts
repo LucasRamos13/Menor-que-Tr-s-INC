@@ -430,6 +430,7 @@ export interface Database {
           google_calendar_id: string;
           calendar_summary: string;
           is_syncing: boolean;
+          is_read_only: boolean;
           sync_token: string | null;
           created_at: string;
           updated_at: string;
