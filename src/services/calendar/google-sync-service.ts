@@ -101,13 +101,14 @@ export async function syncNow(supabase: TypedClient, coupleId: string, userId: s
       await syncOneCalendar(supabase, coupleId, connection.id, accessToken, selection.google_calendar_id, selection.sync_token, summary);
     }
 
-    await supabase
+    const { error: statusError } = await supabase
       .from("google_calendar_connections")
       .update({ last_synced_at: new Date().toISOString(), last_sync_status: "ok", last_sync_error: null })
       .eq("id", connection.id);
+    if (statusError) throw statusError;
   } catch (error) {
     summary.errors += 1;
-    await supabase
+    const { error: statusError } = await supabase
       .from("google_calendar_connections")
       .update({
         last_synced_at: new Date().toISOString(),
@@ -115,6 +116,7 @@ export async function syncNow(supabase: TypedClient, coupleId: string, userId: s
         last_sync_error: error instanceof Error ? error.message : "Erro desconhecido",
       })
       .eq("id", connection.id);
+    if (statusError) console.error("[google-sync-service] failed to record sync status", statusError);
   }
 
   return summary;
