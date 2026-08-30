@@ -235,10 +235,18 @@ async function syncOneCalendar(
       // always reject writes — that is permanent and not the user's to fix,
       // so record it on this one link instead of failing the whole sync.
       if (pushesToGoogle(action.type) && isGoogleForbiddenError(error)) {
-        await supabase
-          .from("calendar_sync_events")
-          .update({ sync_status: "error", last_error: "Agenda somente leitura no Google — esta alteração não pôde ser enviada." })
-          .eq("id", link.id);
+        if (action.type === "delete_remote") {
+          // There's no local event left to preserve (that's why delete_remote
+          // was chosen) and the remote write will never succeed against a
+          // read-only calendar — retrying this link forever just repeats the
+          // same 403 on every future sync. Drop the link instead.
+          await supabase.from("calendar_sync_events").delete().eq("id", link.id);
+        } else {
+          await supabase
+            .from("calendar_sync_events")
+            .update({ sync_status: "error", last_error: "Agenda somente leitura no Google — esta alteração não pôde ser enviada." })
+            .eq("id", link.id);
+        }
         summary.errors += 1;
         continue;
       }
