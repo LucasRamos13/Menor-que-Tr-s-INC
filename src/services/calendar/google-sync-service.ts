@@ -13,9 +13,14 @@ import {
 import { refreshAccessToken } from "@/lib/google/oauth";
 import { internalEventToGoogleEvent, googleEventToInternalEvent, reconcile, type SyncAction } from "./google-mapping";
 
-/** Actions that push a local change to Google — the only ones that can hit a read-only calendar. */
+/** Actions that send a mutating request (PATCH/DELETE/POST) to Google — the only ones that can hit a read-only calendar. */
 function pushesToGoogle(actionType: SyncAction["type"]): boolean {
-  return actionType === "apply_local_to_remote" || actionType === "conflict_local_wins" || actionType === "recreate_remote_from_local";
+  return (
+    actionType === "apply_local_to_remote" ||
+    actionType === "conflict_local_wins" ||
+    actionType === "recreate_remote_from_local" ||
+    actionType === "delete_remote"
+  );
 }
 
 type TypedClient = SupabaseClient<Database>;
