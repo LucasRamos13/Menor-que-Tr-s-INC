@@ -3,7 +3,7 @@ import { ArrowRight } from "lucide-react";
 import { createClient } from "@/lib/supabase/server";
 import { getMyCoupleContext } from "@/services/couples/couples-service";
 import { listAccounts } from "@/services/finance/accounts-service";
-import { listTransactions, getRecentTransactions } from "@/services/finance/transactions-service";
+import { getAccountBalances, getRecentTransactions } from "@/services/finance/transactions-service";
 import { listCategories } from "@/services/finance/categories-service";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AccountsManager } from "./accounts-manager";
@@ -18,9 +18,9 @@ export default async function FinancePage() {
   const couple = await getMyCoupleContext(supabase, user!.id);
   if (!couple) return null;
 
-  const [accounts, allTx, recent, categories] = await Promise.all([
+  const [accounts, balances, recent, categories] = await Promise.all([
     listAccounts(supabase, couple.coupleId),
-    listTransactions(supabase, couple.coupleId, { pageSize: 1000 }),
+    getAccountBalances(supabase, couple.coupleId),
     getRecentTransactions(supabase, couple.coupleId, 8),
     listCategories(supabase, couple.coupleId),
   ]);
@@ -55,7 +55,7 @@ export default async function FinancePage() {
           <CardTitle>Contas</CardTitle>
         </CardHeader>
         <CardContent>
-          <AccountsManager coupleId={couple.coupleId} userId={user!.id} accounts={accounts} transactions={allTx.transactions} members={couple.members} />
+          <AccountsManager coupleId={couple.coupleId} userId={user!.id} accounts={accounts} balances={balances} members={couple.members} />
         </CardContent>
       </Card>
 

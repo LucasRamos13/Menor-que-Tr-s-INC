@@ -484,6 +484,7 @@ export interface Database {
       is_couple_member: { Args: { p_couple_id: string }; Returns: boolean };
       get_couple_balance: { Args: { p_couple_id: string }; Returns: number };
       get_couple_month_summary: { Args: { p_couple_id: string; p_month_start: string }; Returns: { income_cents: number; expense_cents: number }[] };
+      get_account_balances: { Args: { p_couple_id: string }; Returns: { account_id: string; balance_cents: number }[] };
     };
     Enums: Record<string, never>;
     CompositeTypes: Record<string, never>;

@@ -14,7 +14,6 @@ import { Dialog, DialogHeader, DialogTitle, DialogFooter, DialogCloseButton } fr
 import { CurrencyInput } from "@/components/shared/currency-input";
 import { createClient } from "@/lib/supabase/client";
 import { createAccount, updateAccount, archiveAccount } from "@/services/finance/accounts-service";
-import { accountBalance, type TransactionLike } from "@/services/finance/dashboard";
 import { accountSchema } from "@/validation/finance";
 import { logAndFormat } from "@/lib/errors";
 import { centsToBRL } from "@/lib/money";
@@ -33,11 +32,11 @@ interface AccountsManagerProps {
   coupleId: string;
   userId: string;
   accounts: Tables<"accounts">[];
-  transactions: TransactionLike[];
+  balances: Record<string, number>;
   members: { id: string; fullName: string | null }[];
 }
 
-export function AccountsManager({ coupleId, userId, accounts, transactions, members }: AccountsManagerProps) {
+export function AccountsManager({ coupleId, userId, accounts, balances, members }: AccountsManagerProps) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Tables<"accounts"> | null>(null);
   const router = useRouter();
@@ -73,7 +72,7 @@ export function AccountsManager({ coupleId, userId, accounts, transactions, memb
                     </Badge>
                   )}
                 </p>
-                <p className="mt-1 text-sm font-semibold">{centsToBRL(accountBalance(account, transactions))}</p>
+                <p className="mt-1 text-sm font-semibold">{centsToBRL(balances[account.id] ?? account.initial_balance_cents)}</p>
               </div>
               <div className="flex gap-1">
                 <Button variant="ghost" size="icon" aria-label="Editar" onClick={() => { setEditing(account); setDialogOpen(true); }}>

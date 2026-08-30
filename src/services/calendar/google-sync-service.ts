@@ -432,13 +432,13 @@ export async function pushLocalEventChange(
 ): Promise<void> {
   try {
     const { data: localEvent, error } = await supabase.from("events").select("*").eq("id", link.internal_event_id!).maybeSingle();
+    if (error) throw error;
 
     if (!localEvent) {
       await deleteEvent(accessToken, link.google_calendar_id, link.google_event_id);
       await supabase.from("calendar_sync_events").delete().eq("id", link.id);
       return;
     }
-    if (error) throw error;
 
     const updated = await updateEvent(accessToken, link.google_calendar_id, link.google_event_id, internalEventToGoogleEvent(localEvent));
     await supabase

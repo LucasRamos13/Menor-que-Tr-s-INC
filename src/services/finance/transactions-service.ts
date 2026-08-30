@@ -36,6 +36,18 @@ export async function getCoupleMonthSummary(supabase: TypedClient, coupleId: str
   return { incomeCents: data.income_cents, expenseCents: data.expense_cents };
 }
 
+/**
+ * Balance per account, computed in Postgres — see 0010_get_account_balances.sql.
+ * Avoids fetching the couple's entire transaction history into the Worker
+ * just to sum it client-side (the same CPU concern 0008 fixed for the
+ * dashboard's single total, applied per-account for the Finance page).
+ */
+export async function getAccountBalances(supabase: TypedClient, coupleId: string): Promise<Record<string, number>> {
+  const { data, error } = await supabase.rpc("get_account_balances", { p_couple_id: coupleId });
+  if (error) throw error;
+  return Object.fromEntries(data.map((row) => [row.account_id, row.balance_cents]));
+}
+
 export async function listTransactions(supabase: TypedClient, coupleId: string, filters: TransactionFilters = {}): Promise<TransactionPage> {
   const page = filters.page ?? 0;
   const pageSize = filters.pageSize ?? 50;
