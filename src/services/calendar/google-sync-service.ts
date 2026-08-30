@@ -97,13 +97,26 @@ export async function syncNow(supabase: TypedClient, coupleId: string, userId: s
       .eq("is_syncing", true);
     if (selectionsError) throw selectionsError;
 
+    // One calendar's failure (e.g. Google rejecting a write to a read-only
+    // subscribed calendar) must not stop the others in this list from ever
+    // being attempted, since selections are processed in no guaranteed order.
+    const calendarErrors: string[] = [];
     for (const selection of selections ?? []) {
-      await syncOneCalendar(supabase, coupleId, connection.id, accessToken, selection.google_calendar_id, selection.sync_token, summary);
+      try {
+        await syncOneCalendar(supabase, coupleId, connection.id, accessToken, selection.google_calendar_id, selection.sync_token, summary);
+      } catch (error) {
+        summary.errors += 1;
+        calendarErrors.push(`${selection.calendar_summary}: ${error instanceof Error ? error.message : "erro desconhecido"}`);
+      }
     }
 
     const { error: statusError } = await supabase
       .from("google_calendar_connections")
-      .update({ last_synced_at: new Date().toISOString(), last_sync_status: "ok", last_sync_error: null })
+      .update({
+        last_synced_at: new Date().toISOString(),
+        last_sync_status: calendarErrors.length > 0 ? "error" : "ok",
+        last_sync_error: calendarErrors.length > 0 ? calendarErrors.join(" | ") : null,
+      })
       .eq("id", connection.id);
     if (statusError) throw statusError;
   } catch (error) {

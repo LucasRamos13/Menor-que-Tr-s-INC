@@ -89,13 +89,27 @@ export interface ReconcileInput {
  * tested without touching Google or Supabase. See docs/google-calendar.md
  * for the full write-up of this state machine.
  */
+/**
+ * Timestamps here come from two different query paths (a plain column
+ * select vs. a joined/embedded one) that don't always format the exact same
+ * instant into byte-identical strings. Comparing parsed instants instead of
+ * raw strings avoids treating that formatting difference as a real change
+ * (which previously made every already-synced event look locally modified
+ * on every run, including read-only subscribed calendars Google rejects
+ * writes to).
+ */
+function sameInstant(a: string | null, b: string | null): boolean {
+  if (a === null || b === null) return a === b;
+  return new Date(a).getTime() === new Date(b).getTime();
+}
+
 export function reconcile(input: ReconcileInput): SyncAction {
   const { googleUpdatedAt, localUpdatedAt, lastSyncedGoogleUpdatedAt, lastSyncedLocalUpdatedAt } = input;
 
   const googleDeleted = googleUpdatedAt === null;
   const localDeleted = localUpdatedAt === null;
-  const googleChanged = googleUpdatedAt !== lastSyncedGoogleUpdatedAt;
-  const localChanged = localUpdatedAt !== lastSyncedLocalUpdatedAt;
+  const googleChanged = !sameInstant(googleUpdatedAt, lastSyncedGoogleUpdatedAt);
+  const localChanged = !sameInstant(localUpdatedAt, lastSyncedLocalUpdatedAt);
 
   if (googleDeleted && localDeleted) return { type: "noop" };
 
