@@ -56,7 +56,18 @@ export function GoogleCalendarSettings({ connection, selections, justConnected, 
       .then((res) => res.json())
       .then((data) => {
         if (data.error) throw new Error(data.error);
-        setCalendars(data.calendars ?? []);
+        const list: GoogleCalendarEntry[] = data.calendars ?? [];
+        setCalendars(list);
+        // Pre-check the primary calendar the first time (no saved selection
+        // yet) so it isn't missed in favor of more eye-catching entries like
+        // a public "Feriados no Brasil" calendar.
+        setChecked((prev) => {
+          const next = { ...prev };
+          for (const cal of list) {
+            if (!(cal.id in next)) next[cal.id] = !!cal.primary;
+          }
+          return next;
+        });
       })
       .catch(() => toast.error("Não foi possível carregar a lista de calendários do Google."))
       .finally(() => setLoadingCalendars(false));
